@@ -8,7 +8,7 @@ mod util;
 
 #[kiss3d::main]
 async fn main() {
-    let mut window = Window::new("Unstable Game Jam").await;
+    let mut window = Window::new("Bog-a-thon").await;
     let mut camera = PanZoomCamera2d::new(Vec2::ZERO, 5.0);
     let mut scene = SceneNode2d::empty();
 
