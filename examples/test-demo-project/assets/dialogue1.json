@@ -4,6 +4,7 @@
     "dialogue": {
         "start" : {
             "text" : "Hello!",
+            "sprite": "body2 34",
             "next" : ["Say Hi", "Screw You"]
         },
         "Say Hi" : {
@@ -16,6 +17,7 @@
         },
         "Screw You" : {
             "text" : "GASP! Well you know what! Screw you too. Baka.",
+            "sprite": "body2 39",
             "next" : ["Screw You", "end"]
         },
         "end" : {

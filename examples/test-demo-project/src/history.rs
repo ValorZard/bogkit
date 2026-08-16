@@ -10,33 +10,51 @@
 //!
 //! That is the whole reason to reach for fold instead of a `Vec<String>`: add
 //! a branch to the pipeline (a flag table, a quest counter, an index of what
-//! the player has been told) and rewind keeps working with no new code.
+//! the player has been told) and rewind keeps working with no new code. The
+//! sprite branch is the worked example — see [`DialogueHistory::current_sprite`].
 
 use std::path::Path;
 
-use fold::pipeline::{Keyed, Map, Scored, terminal};
+use fold::pipeline::{FilterMap, Keyed, Map, Scored, terminal};
 use fold::stream::Stream;
 use serde::{Deserialize, Serialize};
 
 use crate::dialogue::{NPCData, NPCParseError};
 
 /// One step along a path: `npc`'s conversation stood on `label` at depth
-/// `step`.
+/// `step`, which put up `sprite` if it is one of the nodes that sets one.
 ///
 /// `step` is the score, and it only ever increases along a live path, so
 /// `(npc, step, label)` identifies exactly one insertion. Retracting it can't
 /// collide with any other visit — including a revisit of the same node later
 /// in the conversation, which lands at a different depth.
+///
+/// The sprite is copied off the node here rather than looked up downstream:
+/// pipeline nodes are plain `fn`s with no access to the graph, so the only
+/// way a branch can see a sprite is for the record to carry it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogueVisit {
     pub npc: String,
     pub step: u32,
     pub label: String,
+    pub sprite: Option<String>,
 }
 
-/// `Keyed { key: npc, val: Scored { score: step, val: label } }` — the shape
+/// What a visit records beyond the `(npc, step)` its history entry is already
+/// keyed and scored by.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VisitPoint {
+    pub label: String,
+    pub sprite: Option<String>,
+}
+
+/// `Keyed { key: npc, val: Scored { score: step, val: point } }` — the shape
 /// [`terminal::KeyedRanked`] wants: one score-ordered run per NPC.
-type HistoryEntry = Keyed<String, Scored<u32, String>>;
+type HistoryEntry = Keyed<String, Scored<u32, VisitPoint>>;
+
+/// The same shape as [`HistoryEntry`], but only visits that name a sprite
+/// reach it, so a key's whole run is the portrait changes along the path.
+type SpriteChange = Keyed<String, Scored<u32, String>>;
 
 // Plain `fn`s rather than closures: a closure's type can't be named, and the
 // pipeline type appears in `Stream<D, P>`, so a closure here would make
@@ -44,7 +62,13 @@ type HistoryEntry = Keyed<String, Scored<u32, String>>;
 fn history_entry(visit: &DialogueVisit) -> HistoryEntry {
     Keyed::new(
         visit.npc.clone(),
-        Scored::new(visit.step, visit.label.clone()),
+        Scored::new(
+            visit.step,
+            VisitPoint {
+                label: visit.label.clone(),
+                sprite: visit.sprite.clone(),
+            },
+        ),
     )
 }
 
@@ -52,15 +76,36 @@ fn visited_label(visit: &DialogueVisit) -> String {
     visit.label.clone()
 }
 
+/// Drops the visits that leave the portrait alone, so the sprite branch holds
+/// only the steps that actually changed it.
+fn sprite_change(visit: &DialogueVisit) -> Option<SpriteChange> {
+    let sprite = visit.sprite.clone()?;
+    Some(Keyed::new(
+        visit.npc.clone(),
+        Scored::new(visit.step, sprite),
+    ))
+}
+
 type HistoryPipeline = (
     Map<
         fn(&DialogueVisit) -> HistoryEntry,
-        terminal::KeyedRanked<String, u32, String>,
+        terminal::KeyedRanked<String, u32, VisitPoint>,
         DialogueVisit,
         HistoryEntry,
     >,
     Map<fn(&DialogueVisit) -> String, terminal::Bag<String>, DialogueVisit, String>,
+    FilterMap<
+        fn(&DialogueVisit) -> Option<SpriteChange>,
+        terminal::KeyedRanked<String, u32, String>,
+        DialogueVisit,
+        SpriteChange,
+    >,
 );
+
+/// The sprite `label`'s node puts up, if it is one of the nodes that sets one.
+fn sprite_of(npc: &NPCData, label: &str) -> Option<String> {
+    npc.node(label)?.data().sprite.clone()
+}
 
 /// Every conversation's path, materialized incrementally and persisted.
 pub struct DialogueHistory {
@@ -85,9 +130,29 @@ impl DialogueHistory {
                         visited_label as fn(&DialogueVisit) -> String,
                         terminal::Bag::new("visited"),
                     ),
+                    // the portrait: the same per-NPC score-ordered runs, but
+                    // only the steps that set a sprite
+                    FilterMap::new(
+                        sprite_change as fn(&DialogueVisit) -> Option<SpriteChange>,
+                        terminal::KeyedRanked::new("sprite"),
+                    ),
                 ),
             ),
         }
+    }
+
+    /// The record for where `npc`'s conversation stands, rebuilt byte-for-byte
+    /// as it was inserted so it can be handed straight to a retraction.
+    fn current_visit(&self, npc: &str) -> Option<DialogueVisit> {
+        let key = npc.to_string();
+        self.stream.rtx(|(history, _, _)| {
+            history.max(&key).map(|top| DialogueVisit {
+                npc: key.clone(),
+                step: top.score,
+                label: top.val.label,
+                sprite: top.val.sprite,
+            })
+        })
     }
 
     /// Where `npc`'s conversation currently stands, as `(depth, label)`.
@@ -95,9 +160,25 @@ impl DialogueHistory {
     /// The highest-scored visit *is* the cursor — there is no stored "current
     /// node" that could disagree with the history.
     pub fn current(&self, npc: &str) -> Option<(u32, String)> {
+        self.current_visit(npc)
+            .map(|visit| (visit.step, visit.label))
+    }
+
+    /// The sprite showing while the player stands where they are, if any node
+    /// on the live path has set one.
+    ///
+    /// Nodes that leave `sprite` unset never reach this branch, so the
+    /// highest-scored entry is the nearest node at or behind the cursor that
+    /// did set one — exactly the "a portrait stays up until something replaces
+    /// it" rule, without a rule anywhere.
+    ///
+    /// Rewind needs no help either: stepping back past the node that set the
+    /// sprite retracts its entry here in the same transaction, and `max`
+    /// reveals the runner-up — the portrait that was up before it.
+    pub fn current_sprite(&self, npc: &str) -> Option<String> {
         let npc = npc.to_string();
         self.stream
-            .rtx(|(history, _)| history.max(&npc).map(|top| (top.score, top.val)))
+            .rtx(|(_, _, sprite)| sprite.max(&npc).map(|top| top.val))
     }
 
     /// Open the conversation if it has never been had, then report where it
@@ -110,6 +191,7 @@ impl DialogueHistory {
             npc: npc.name().to_string(),
             step: 0,
             label: NPCData::START_LABEL.to_string(),
+            sprite: sprite_of(npc, NPCData::START_LABEL),
         };
         self.stream.wtx(|tx| tx.insert(&root));
         (root.step, root.label)
@@ -120,30 +202,25 @@ impl DialogueHistory {
         let (step, from) = self.enter(npc);
         npc.transition_allowed(&from, to)?;
 
-        self.stream.wtx(|tx| {
-            tx.insert(&DialogueVisit {
-                npc: npc.name().to_string(),
-                step: step + 1,
-                label: to.to_string(),
-            })
-        });
+        let visit = DialogueVisit {
+            npc: npc.name().to_string(),
+            step: step + 1,
+            label: to.to_string(),
+            sprite: sprite_of(npc, to),
+        };
+        self.stream.wtx(|tx| tx.insert(&visit));
         Ok(())
     }
 
     /// Step back one node, returning whether there was anywhere to go.
     pub fn rewind(&mut self, npc: &str) -> bool {
-        let Some((step, label)) = self.current(npc) else {
+        let Some(visit) = self.current_visit(npc) else {
             return false;
         };
-        if step == 0 {
+        if visit.step == 0 {
             return false; // standing on the root; nothing behind it
         }
 
-        let visit = DialogueVisit {
-            npc: npc.to_string(),
-            step,
-            label,
-        };
         self.stream.wtx(|tx| tx.remove(&visit));
         true
     }
@@ -154,7 +231,7 @@ impl DialogueHistory {
     /// roll back or none of it does.
     pub fn restart(&mut self, npc: &str) {
         let npc_key = npc.to_string();
-        let visits: Vec<(DialogueVisit, i64)> = self.stream.rtx(|(history, _)| {
+        let visits: Vec<(DialogueVisit, i64)> = self.stream.rtx(|(history, _, _)| {
             history
                 .iter(&npc_key)
                 .filter(|(visit, _)| visit.score > 0)
@@ -163,7 +240,8 @@ impl DialogueHistory {
                         DialogueVisit {
                             npc: npc_key.clone(),
                             step: visit.score,
-                            label: visit.val,
+                            label: visit.val.label,
+                            sprite: visit.val.sprite,
                         },
                         count,
                     )
@@ -184,10 +262,10 @@ impl DialogueHistory {
     /// The current path from the opening line to the cursor, in order.
     pub fn path(&self, npc: &str) -> Vec<String> {
         let npc = npc.to_string();
-        self.stream.rtx(|(history, _)| {
+        self.stream.rtx(|(history, _, _)| {
             history
                 .iter(&npc)
-                .map(|(visit, _)| visit.val)
+                .map(|(visit, _)| visit.val.label)
                 .collect::<Vec<_>>()
         })
     }
@@ -195,7 +273,7 @@ impl DialogueHistory {
     /// How many times each node has been visited
     pub fn visited_counts(&self) -> Vec<(String, i64)> {
         self.stream
-            .rtx(|(_, visited)| visited.iter().collect::<Vec<_>>())
+            .rtx(|(_, visited, _)| visited.iter().collect::<Vec<_>>())
     }
 }
 
@@ -271,6 +349,61 @@ mod tests {
                 .visited_counts()
                 .iter()
                 .any(|(label, _)| label == "Say Hi" || label == "Alright")
+        );
+    }
+
+    #[test]
+    fn the_sprite_branch_holds_the_last_node_that_set_one() {
+        let npc = NPCData::from_json_slice(include_bytes!("../assets/dialogue1.json"))
+            .expect("should parse");
+        let mut history = history("sprite");
+
+        // `start` sets one, so it is up from the opening line
+        history.enter(&npc);
+        assert_eq!(
+            history.current_sprite(npc.name()),
+            Some("body2 34".to_string())
+        );
+
+        // `Say Hi` sets none: the portrait carries over untouched
+        history.advance(&npc, "Say Hi").expect("legal");
+        assert_eq!(
+            history.current_sprite(npc.name()),
+            Some("body2 34".to_string())
+        );
+
+        // ...and the other branch does set one
+        history.rewind(npc.name());
+        history.advance(&npc, "Screw You").expect("legal");
+        assert_eq!(
+            history.current_sprite(npc.name()),
+            Some("body1 12".to_string())
+        );
+
+        // rewinding past it retracts that entry, and `max` falls back to the
+        // sprite that was up before — nothing in `rewind` knows about sprites
+        assert!(history.rewind(npc.name()));
+        assert_eq!(
+            history.current_sprite(npc.name()),
+            Some("body2 34".to_string())
+        );
+    }
+
+    #[test]
+    fn restart_leaves_the_opening_sprite_up() {
+        let npc = NPCData::from_json_slice(include_bytes!("../assets/dialogue1.json"))
+            .expect("should parse");
+        let mut history = history("sprite-restart");
+
+        history.enter(&npc);
+        history.advance(&npc, "Screw You").expect("legal");
+        history.advance(&npc, "Screw You").expect("legal");
+
+        history.restart(npc.name());
+        assert_eq!(history.path(npc.name()), vec!["start".to_string()]);
+        assert_eq!(
+            history.current_sprite(npc.name()),
+            Some("body2 34".to_string())
         );
     }
 

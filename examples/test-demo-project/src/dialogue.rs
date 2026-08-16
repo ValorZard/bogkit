@@ -7,6 +7,7 @@ use thiserror::Error;
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct DialogueNodeData {
     pub text: String,
+    pub sprite: Option<String>,
     pub next: Vec<String>,
 }
 

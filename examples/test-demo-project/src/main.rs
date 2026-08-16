@@ -1,7 +1,8 @@
 use kiss3d::{egui, prelude::*};
 
 use crate::{
-    asset_handler::fetch_asset_bytes, dialogue::NPCData, history::DialogueHistory, sprites::preload_sprites, time_stepper::FixedTimeStepper,
+    asset_handler::fetch_asset_bytes, dialogue::NPCData, history::DialogueHistory,
+    sprites::preload_sprites, time_stepper::FixedTimeStepper,
 };
 
 mod asset_handler;
@@ -21,7 +22,9 @@ async fn main() {
     let mut texture_manager = TextureManager::new();
     preload_sprites("sprites.json", &mut texture_manager).await;
     let sprite_texture = texture_manager.get("my_sprite").expect("should exist");
-    let mut square = scene.add_rectangle(10.0, 10.0).set_texture(sprite_texture);
+    let mut square = scene
+        .add_rectangle(256.0 / 2., 288.0 / 2.)
+        .set_texture(sprite_texture);
     let mut time_stepper = FixedTimeStepper::default();
     let test_npc = NPCData::from_json_slice(
         &fetch_asset_bytes("dialogue1.json")
@@ -33,6 +36,10 @@ async fn main() {
     // stores all dialog history in the visual novel
     let mut history = DialogueHistory::open(std::env::temp_dir().join("bogkit-dialogue.db"));
     history.enter(&test_npc);
+
+    // What the portrait is showing, so the texture is only swapped when the
+    // derived answer actually changes rather than every frame.
+    let mut shown_sprite: Option<String> = None;
 
     while window.render_2d(&mut scene, &mut camera).await {
         for event in window.events().iter() {
@@ -47,10 +54,6 @@ async fn main() {
                 }
                 _ => {}
             }
-        }
-
-        while time_stepper.step() {
-            square.rotate(0.1);
         }
 
         // Draw UI
@@ -108,5 +111,17 @@ async fn main() {
                     }
                 });
         });
+
+        // The portrait is derived, never assigned: whatever the sprite branch
+        // holds after this frame's clicks is what goes up, rewinds included.
+        let wanted = history.current_sprite(test_npc.name());
+        if wanted != shown_sprite {
+            if let Some(name) = &wanted
+                && let Some(texture) = texture_manager.get(name)
+            {
+                square.set_texture(texture);
+            }
+            shown_sprite = wanted;
+        }
     }
 }
