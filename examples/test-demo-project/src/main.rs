@@ -1,13 +1,14 @@
 use kiss3d::{egui, prelude::*};
 
 use crate::{
-    asset_handler::fetch_asset_bytes, dialogue::NPCData, history::DialogueHistory,
-    time_stepper::FixedTimeStepper,
+    asset_handler::fetch_asset_bytes, dialogue::NPCData, history::DialogueHistory, sprites::preload_sprites, time_stepper::FixedTimeStepper,
 };
 
 mod asset_handler;
 mod dialogue;
 mod history;
+mod sprite_list;
+mod sprites;
 mod time_stepper;
 mod util;
 
@@ -18,12 +19,8 @@ async fn main() {
     let mut scene = SceneNode2d::empty();
 
     let mut texture_manager = TextureManager::new();
-    let sprite_texture = texture_manager.add_image_from_memory_pixelated(
-        &fetch_asset_bytes("my_sprite.png")
-            .await
-            .expect("Should exist"),
-        "my_sprite",
-    );
+    preload_sprites("sprites.json", &mut texture_manager).await;
+    let sprite_texture = texture_manager.get("my_sprite").expect("should exist");
     let mut square = scene.add_rectangle(10.0, 10.0).set_texture(sprite_texture);
     let mut time_stepper = FixedTimeStepper::default();
     let test_npc = NPCData::from_json_slice(

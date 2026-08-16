@@ -2,3 +2,6 @@
 target/
 .DS_Store
 dist/
+
+# sprite art: kept out of the repo rather than in LFS
+*.png

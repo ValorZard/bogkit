@@ -1,0 +1,259 @@
+{
+  "sprites": {
+    "body1 1": {
+      "path": "body1 1.png"
+    },
+    "body1 10": {
+      "path": "body1 10.png"
+    },
+    "body1 11": {
+      "path": "body1 11.png"
+    },
+    "body1 12": {
+      "path": "body1 12.png"
+    },
+    "body1 13": {
+      "path": "body1 13.png"
+    },
+    "body1 14": {
+      "path": "body1 14.png"
+    },
+    "body1 15": {
+      "path": "body1 15.png"
+    },
+    "body1 16": {
+      "path": "body1 16.png"
+    },
+    "body1 17": {
+      "path": "body1 17.png"
+    },
+    "body1 18": {
+      "path": "body1 18.png"
+    },
+    "body1 19": {
+      "path": "body1 19.png"
+    },
+    "body1 2": {
+      "path": "body1 2.png"
+    },
+    "body1 20": {
+      "path": "body1 20.png"
+    },
+    "body1 21": {
+      "path": "body1 21.png"
+    },
+    "body1 22": {
+      "path": "body1 22.png"
+    },
+    "body1 23": {
+      "path": "body1 23.png"
+    },
+    "body1 24": {
+      "path": "body1 24.png"
+    },
+    "body1 25": {
+      "path": "body1 25.png"
+    },
+    "body1 26": {
+      "path": "body1 26.png"
+    },
+    "body1 27": {
+      "path": "body1 27.png"
+    },
+    "body1 28": {
+      "path": "body1 28.png"
+    },
+    "body1 29": {
+      "path": "body1 29.png"
+    },
+    "body1 3": {
+      "path": "body1 3.png"
+    },
+    "body1 30": {
+      "path": "body1 30.png"
+    },
+    "body1 31": {
+      "path": "body1 31.png"
+    },
+    "body1 32": {
+      "path": "body1 32.png"
+    },
+    "body1 33": {
+      "path": "body1 33.png"
+    },
+    "body1 34": {
+      "path": "body1 34.png"
+    },
+    "body1 35": {
+      "path": "body1 35.png"
+    },
+    "body1 36": {
+      "path": "body1 36.png"
+    },
+    "body1 37": {
+      "path": "body1 37.png"
+    },
+    "body1 38": {
+      "path": "body1 38.png"
+    },
+    "body1 39": {
+      "path": "body1 39.png"
+    },
+    "body1 4": {
+      "path": "body1 4.png"
+    },
+    "body1 40": {
+      "path": "body1 40.png"
+    },
+    "body1 41": {
+      "path": "body1 41.png"
+    },
+    "body1 42": {
+      "path": "body1 42.png"
+    },
+    "body1 5": {
+      "path": "body1 5.png"
+    },
+    "body1 6": {
+      "path": "body1 6.png"
+    },
+    "body1 7": {
+      "path": "body1 7.png"
+    },
+    "body1 8": {
+      "path": "body1 8.png"
+    },
+    "body1 9": {
+      "path": "body1 9.png"
+    },
+    "body2 1": {
+      "path": "body2 1.png"
+    },
+    "body2 10": {
+      "path": "body2 10.png"
+    },
+    "body2 11": {
+      "path": "body2 11.png"
+    },
+    "body2 12": {
+      "path": "body2 12.png"
+    },
+    "body2 13": {
+      "path": "body2 13.png"
+    },
+    "body2 14": {
+      "path": "body2 14.png"
+    },
+    "body2 15": {
+      "path": "body2 15.png"
+    },
+    "body2 16": {
+      "path": "body2 16.png"
+    },
+    "body2 17": {
+      "path": "body2 17.png"
+    },
+    "body2 18": {
+      "path": "body2 18.png"
+    },
+    "body2 19": {
+      "path": "body2 19.png"
+    },
+    "body2 2": {
+      "path": "body2 2.png"
+    },
+    "body2 20": {
+      "path": "body2 20.png"
+    },
+    "body2 21": {
+      "path": "body2 21.png"
+    },
+    "body2 22": {
+      "path": "body2 22.png"
+    },
+    "body2 23": {
+      "path": "body2 23.png"
+    },
+    "body2 24": {
+      "path": "body2 24.png"
+    },
+    "body2 25": {
+      "path": "body2 25.png"
+    },
+    "body2 26": {
+      "path": "body2 26.png"
+    },
+    "body2 27": {
+      "path": "body2 27.png"
+    },
+    "body2 28": {
+      "path": "body2 28.png"
+    },
+    "body2 29": {
+      "path": "body2 29.png"
+    },
+    "body2 3": {
+      "path": "body2 3.png"
+    },
+    "body2 30": {
+      "path": "body2 30.png"
+    },
+    "body2 31": {
+      "path": "body2 31.png"
+    },
+    "body2 32": {
+      "path": "body2 32.png"
+    },
+    "body2 33": {
+      "path": "body2 33.png"
+    },
+    "body2 34": {
+      "path": "body2 34.png"
+    },
+    "body2 35": {
+      "path": "body2 35.png"
+    },
+    "body2 36": {
+      "path": "body2 36.png"
+    },
+    "body2 37": {
+      "path": "body2 37.png"
+    },
+    "body2 38": {
+      "path": "body2 38.png"
+    },
+    "body2 39": {
+      "path": "body2 39.png"
+    },
+    "body2 4": {
+      "path": "body2 4.png"
+    },
+    "body2 40": {
+      "path": "body2 40.png"
+    },
+    "body2 41": {
+      "path": "body2 41.png"
+    },
+    "body2 42": {
+      "path": "body2 42.png"
+    },
+    "body2 5": {
+      "path": "body2 5.png"
+    },
+    "body2 6": {
+      "path": "body2 6.png"
+    },
+    "body2 7": {
+      "path": "body2 7.png"
+    },
+    "body2 8": {
+      "path": "body2 8.png"
+    },
+    "body2 9": {
+      "path": "body2 9.png"
+    },
+    "my_sprite": {
+      "path": "my_sprite.png"
+    }
+  }
+}
