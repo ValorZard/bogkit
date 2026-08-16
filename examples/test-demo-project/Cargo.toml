@@ -1,0 +1,22 @@
+[package]
+name = "test-demo-project"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+anny = { path = "../../anny" }
+ese = { path = "../../ese", features = ["dim-512", "quant-8"] }
+fold = { path = "../../fold" }
+serde = { version = "1", features = ["derive"] }
+anyhow = "1.0.104"
+kiss3d = { version = "0.46", features = ["egui"] }
+thiserror = "2.0.20"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+time = "0.3.55"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = "0.3"
+gloo-net = "0.7.0"
+time = { version = "0.3.55", features = ["wasm-bindgen"] }
