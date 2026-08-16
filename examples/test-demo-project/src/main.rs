@@ -1,11 +1,13 @@
-use iddqd::BiHashItem;
 use kiss3d::{egui, prelude::*};
 
-use crate::{asset_handler::fetch_asset_bytes, dialogue::NPCData, time_stepper::FixedTimeStepper};
-use fold::stream::Stream;
+use crate::{
+    asset_handler::fetch_asset_bytes, dialogue::NPCData, history::DialogueHistory,
+    time_stepper::FixedTimeStepper,
+};
 
 mod asset_handler;
 mod dialogue;
+mod history;
 mod time_stepper;
 mod util;
 
@@ -24,13 +26,16 @@ async fn main() {
     );
     let mut square = scene.add_rectangle(10.0, 10.0).set_texture(sprite_texture);
     let mut time_stepper = FixedTimeStepper::default();
-    let mut test_npc = NPCData::from_json_slice(
+    let test_npc = NPCData::from_json_slice(
         &fetch_asset_bytes("dialogue1.json")
             .await
             .expect("should exist"),
     )
     .expect("should parse");
-    let font = Font::default();
+
+    // stores all dialog history in the visual novel
+    let mut history = DialogueHistory::open(std::env::temp_dir().join("bogkit-dialogue.db"));
+    history.enter(&test_npc);
 
     while window.render_2d(&mut scene, &mut camera).await {
         for event in window.events().iter() {
@@ -56,21 +61,53 @@ async fn main() {
             egui::Window::new("Kiss3d egui Example")
                 .default_width(300.0)
                 .show(ctx, |ui| {
-                    let mut option: Option<&String> = None;
-                    if let Some((label, dialogue_node)) = test_npc.get_current_dialog() {
-                        // Rotation control
-                        ui.label(label);
+                    let (step, label) = history.enter(&test_npc);
+
+                    // What the player picked this frame, applied after the
+                    // borrow of the node ends.
+                    let mut chosen: Option<String> = None;
+                    let mut go_back = false;
+                    let mut restart = false;
+
+                    if let Some(node) = test_npc.node(&label) {
+                        ui.label(node.label());
 
                         ui.separator();
-                        ui.label(dialogue_node.key2().text.clone());
-                        for next_label in &dialogue_node.key2().next {
+                        ui.label(node.data().text.clone());
+                        for next_label in &node.data().next {
                             if ui.button(next_label).clicked() {
-                                option = Some(next_label);
+                                chosen = Some(next_label.clone());
                             }
                         }
                     }
-                    if let Some(label) = option {
-                        let _ = test_npc.set_next_dialog(label.to_string());
+
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        // step 0 is the opening line: nothing behind it
+                        go_back = ui
+                            .add_enabled(step > 0, egui::Button::new("< back"))
+                            .clicked();
+                        restart = ui
+                            .add_enabled(step > 0, egui::Button::new("restart"))
+                            .clicked();
+                    });
+                    ui.label(format!(
+                        "path: {}",
+                        history.path(test_npc.name()).join(" > ")
+                    ));
+
+                    ui.separator();
+                    ui.label("nodes on a live path (retracted by rewind):");
+                    for (visited_label, count) in history.visited_counts() {
+                        ui.label(format!("  {visited_label}: {count}"));
+                    }
+
+                    if let Some(next) = chosen {
+                        let _ = history.advance(&test_npc, &next);
+                    } else if go_back {
+                        history.rewind(test_npc.name());
+                    } else if restart {
+                        history.restart(test_npc.name());
                     }
                 });
         });

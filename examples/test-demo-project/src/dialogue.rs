@@ -16,6 +16,16 @@ pub struct DialogueNode {
     data: DialogueNodeData,
 }
 
+impl DialogueNode {
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    pub fn data(&self) -> &DialogueNodeData {
+        &self.data
+    }
+}
+
 impl BiHashItem for DialogueNode {
     type K1<'a> = &'a str;
 
@@ -32,12 +42,16 @@ impl BiHashItem for DialogueNode {
     bi_upcast!();
 }
 
+/// An NPC's dialogue *graph* — immutable content, exactly as authored.
+///
+/// Deliberately holds no cursor: where the player currently stands, and how
+/// they got there, lives in [`DialogueHistory`](crate::history::DialogueHistory)
+/// so that walking it back is a retraction rather than a bookkeeping problem.
 #[derive(Serialize, Deserialize)]
 pub struct NPCData {
     name: String,
     pronouns: String,
     dialogue: BiHashMap<DialogueNode>,
-    current_dialogue_node: String,
 }
 
 /// An NPC exactly as it is written in the asset JSON, where the dialogue is an
@@ -105,30 +119,33 @@ impl NPCData {
             name: raw.name,
             pronouns: raw.pronouns,
             dialogue,
-            current_dialogue_node: "start".to_string(),
         })
     }
 
-    pub fn get_current_dialog(&self) -> Option<(String, &DialogueNode)> {
-        let dialogue_node = self.dialogue.get1(self.current_dialogue_node.as_str())?;
-        Some((self.current_dialogue_node.clone(), dialogue_node))
+    /// The label every conversation with this NPC opens on.
+    pub const START_LABEL: &'static str = "start";
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
-    pub fn set_next_dialog(&mut self, next: String) -> Result<(), NPCParseError> {
-        let dialogue_node = self
-            .dialogue
-            .get1(self.current_dialogue_node.as_str())
-            .ok_or(NPCParseError::UnknownLabel {
-                label: self.current_dialogue_node.clone(),
-            })?;
-        if !dialogue_node.key2().next.contains(&next) {
-            return Err(NPCParseError::UnknownNextNode {
-                from: self.current_dialogue_node.clone(),
-                to: next,
-            });
-        } else {
-            self.current_dialogue_node = next;
+    /// The node `label` names, if the graph has one.
+    pub fn node(&self, label: &str) -> Option<&DialogueNode> {
+        self.dialogue.get1(label)
+    }
+
+    /// Whether the player standing on `from` is allowed to pick `to`.
+    pub fn transition_allowed(&self, from: &str, to: &str) -> Result<(), NPCParseError> {
+        let node = self.node(from).ok_or(NPCParseError::UnknownLabel {
+            label: from.to_string(),
+        })?;
+        if node.data.next.iter().any(|next| next == to) {
             Ok(())
+        } else {
+            Err(NPCParseError::UnknownNextNode {
+                from: from.to_string(),
+                to: to.to_string(),
+            })
         }
     }
 }
@@ -139,7 +156,7 @@ mod tests {
 
     #[test]
     fn parses_dialogue1() {
-        let bytes = include_bytes!("../assets/dialogue1.json");
+        let bytes = include_bytes!("../assets/test_dialogue.json");
         let npc = NPCData::from_json_slice(bytes).expect("dialogue1.json should parse");
 
         assert_eq!(npc.name, "Jane Doe");

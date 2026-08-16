@@ -4,7 +4,19 @@
     "dialogue": {
         "start" : {
             "text" : "Hello!",
+            "next" : ["Say Hi", "Screw You"]
+        },
+        "Say Hi" : {
+            "text" : "How have you been?",
+            "next" : ["Alright"]
+        },
+        "Alright" : {
+            "text" : "Well, nice talking to you!",
             "next" : ["end"]
+        },
+        "Screw You" : {
+            "text" : "GASP! Well you know what! Screw you too. Baka.",
+            "next" : ["Screw You", "end"]
         },
         "end" : {
             "text" : "End",
