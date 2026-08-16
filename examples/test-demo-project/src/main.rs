@@ -24,7 +24,7 @@ async fn main() {
     );
     let mut square = scene.add_rectangle(10.0, 10.0).set_texture(sprite_texture);
     let mut time_stepper = FixedTimeStepper::default();
-    let test_npc = NPCData::from_json_slice(
+    let mut test_npc = NPCData::from_json_slice(
         &fetch_asset_bytes("dialogue1.json")
             .await
             .expect("should exist"),
@@ -51,19 +51,28 @@ async fn main() {
             square.rotate(0.1);
         }
 
-        if let Some((label, dialogue_node)) = test_npc.get_current_dialog() {
-            // Draw UI
-            window.draw_ui(|ctx| {
-                egui::Window::new("Kiss3d egui Example")
-                    .default_width(300.0)
-                    .show(ctx, |ui| {
+        // Draw UI
+        window.draw_ui(|ctx| {
+            egui::Window::new("Kiss3d egui Example")
+                .default_width(300.0)
+                .show(ctx, |ui| {
+                    let mut option: Option<&String> = None;
+                    if let Some((label, dialogue_node)) = test_npc.get_current_dialog() {
                         // Rotation control
                         ui.label(label);
 
                         ui.separator();
                         ui.label(dialogue_node.key2().text.clone());
-                    });
-            });
-        }
+                        for next_label in &dialogue_node.key2().next {
+                            if ui.button(next_label).clicked() {
+                                option = Some(next_label);
+                            }
+                        }
+                    }
+                    if let Some(label) = option {
+                        let _ = test_npc.set_next_dialog(label.to_string());
+                    }
+                });
+        });
     }
 }

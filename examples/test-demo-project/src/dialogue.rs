@@ -58,6 +58,8 @@ pub enum NPCParseError {
     DuplicateNodeData { first: String, second: String },
     #[error("node '{from}' points at '{to}', which doesn't exist")]
     UnknownNextNode { from: String, to: String },
+    #[error("label '{label}' doesn't exist")]
+    UnknownLabel { label: String },
 }
 
 impl NPCData {
@@ -110,6 +112,24 @@ impl NPCData {
     pub fn get_current_dialog(&self) -> Option<(String, &DialogueNode)> {
         let dialogue_node = self.dialogue.get1(self.current_dialogue_node.as_str())?;
         Some((self.current_dialogue_node.clone(), dialogue_node))
+    }
+
+    pub fn set_next_dialog(&mut self, next: String) -> Result<(), NPCParseError> {
+        let dialogue_node = self
+            .dialogue
+            .get1(self.current_dialogue_node.as_str())
+            .ok_or(NPCParseError::UnknownLabel {
+                label: self.current_dialogue_node.clone(),
+            })?;
+        if !dialogue_node.key2().next.contains(&next) {
+            return Err(NPCParseError::UnknownNextNode {
+                from: self.current_dialogue_node.clone(),
+                to: next,
+            });
+        } else {
+            self.current_dialogue_node = next;
+            Ok(())
+        }
     }
 }
 
