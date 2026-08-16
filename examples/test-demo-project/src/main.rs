@@ -1,8 +1,11 @@
-use kiss3d::prelude::*;
+use iddqd::BiHashItem;
+use kiss3d::{egui, prelude::*};
 
-use crate::{asset_handler::fetch_asset_bytes, time_stepper::FixedTimeStepper};
+use crate::{asset_handler::fetch_asset_bytes, dialogue::NPCData, time_stepper::FixedTimeStepper};
+use fold::stream::Stream;
 
 mod asset_handler;
+mod dialogue;
 mod time_stepper;
 mod util;
 
@@ -21,6 +24,13 @@ async fn main() {
     );
     let mut square = scene.add_rectangle(10.0, 10.0).set_texture(sprite_texture);
     let mut time_stepper = FixedTimeStepper::default();
+    let test_npc = NPCData::from_json_slice(
+        &fetch_asset_bytes("dialogue1.json")
+            .await
+            .expect("should exist"),
+    )
+    .expect("should parse");
+    let font = Font::default();
 
     while window.render_2d(&mut scene, &mut camera).await {
         for event in window.events().iter() {
@@ -39,6 +49,21 @@ async fn main() {
 
         while time_stepper.step() {
             square.rotate(0.1);
+        }
+
+        if let Some((label, dialogue_node)) = test_npc.get_current_dialog() {
+            // Draw UI
+            window.draw_ui(|ctx| {
+                egui::Window::new("Kiss3d egui Example")
+                    .default_width(300.0)
+                    .show(ctx, |ui| {
+                        // Rotation control
+                        ui.label(label);
+
+                        ui.separator();
+                        ui.label(dialogue_node.key2().text.clone());
+                    });
+            });
         }
     }
 }

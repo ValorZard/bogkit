@@ -1,0 +1,14 @@
+{
+    "name": "Jane Doe",
+    "pronouns": "She/They",
+    "dialogue": {
+        "start" : {
+            "text" : "Hello!",
+            "next" : ["end"]
+        },
+        "end" : {
+            "text" : "End",
+            "next" : []
+        }
+    }
+}
