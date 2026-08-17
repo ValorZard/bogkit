@@ -1,13 +1,27 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use iddqd::{BiHashItem, BiHashMap, bi_upcast};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+/// A tally of named affinity scores — `{"romance": 1}` — used both for what a
+/// node *awards* and what a node *demands*.
+///
+/// `BTreeMap` rather than `HashMap` because [`DialogueNodeData`] is the second
+/// key of the dialogue map and so must be `Hash + Eq`, which `HashMap` isn't.
+pub type Points = BTreeMap<String, i64>;
+
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct DialogueNodeData {
     pub text: String,
     pub sprite: Option<String>,
+    #[serde(default)]
+    pub points: Points,
+    /// What the player must already have earned before this node may be
+    /// offered as a choice. Unmet nodes stay locked; see
+    /// [`DialogueHistory::unlocked`](crate::history::DialogueHistory::unlocked).
+    #[serde(default)]
+    pub requires: Points,
     pub next: Vec<String>,
 }
 
@@ -75,6 +89,13 @@ pub enum NPCParseError {
     UnknownNextNode { from: String, to: String },
     #[error("label '{label}' doesn't exist")]
     UnknownLabel { label: String },
+    #[error("'{to}' needs {need} {flag}, but only {have} has been earned")]
+    Locked {
+        to: String,
+        flag: String,
+        have: i64,
+        need: i64,
+    },
 }
 
 impl NPCData {

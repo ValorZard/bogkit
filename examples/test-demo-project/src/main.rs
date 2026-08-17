@@ -74,9 +74,18 @@ async fn main() {
 
                         ui.separator();
                         ui.label(node.data().text.clone());
-                        for next_label in &node.data().next {
-                            if ui.button(next_label).clicked() {
-                                chosen = Some(next_label.clone());
+
+                        // Locked choices are shown greyed out rather than
+                        // hidden, so the route the player hasn't earned yet is
+                        // visible as something to earn.
+                        for (next_label, unlocked) in history.options(&test_npc) {
+                            let text = if unlocked {
+                                next_label.clone()
+                            } else {
+                                format!("🔒 {next_label}")
+                            };
+                            if ui.add_enabled(unlocked, egui::Button::new(text)).clicked() {
+                                chosen = Some(next_label);
                             }
                         }
                     }
@@ -95,6 +104,12 @@ async fn main() {
                         "path: {}",
                         history.path(test_npc.name()).join(" > ")
                     ));
+
+                    ui.separator();
+                    ui.label("affinity (retracted by rewind, same as the path):");
+                    for (flag, total) in history.scores(test_npc.name()) {
+                        ui.label(format!("  {flag}: {total}"));
+                    }
 
                     ui.separator();
                     ui.label("nodes on a live path (retracted by rewind):");

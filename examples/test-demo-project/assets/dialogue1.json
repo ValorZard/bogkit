@@ -9,15 +9,35 @@
         },
         "Say Hi" : {
             "text" : "How have you been?",
-            "next" : ["Alright"]
+            "points": { "romance": 1 },
+            "next" : ["You look happy today", "Alright"]
+        },
+        "You look happy today" : {
+            "text" : "Do I? ...I suppose I have been, lately.\nAround you, anyway.",
+            "sprite": "body2 12",
+            "points": { "romance": 1 },
+            "next" : ["Ask her to walk with you", "Alright"]
+        },
+        "Ask her to walk with you" : {
+            "text" : "A walk? With you? ... Y'know what, I'd like that. I'd like that a lot, actually.",
+            "sprite": "body2 7",
+            "points": { "romance": 1 },
+            "next" : ["Alright", "I love you"]
+        },
+        "I love you" : {
+            "text" : "...You mean it. GASP. I mean — yes. Me too. Baka.",
+            "sprite": "body2 20",
+            "requires": { "romance": 3 },
+            "next" : ["end"]
         },
         "Alright" : {
             "text" : "Well, nice talking to you!",
-            "next" : ["end"]
+            "next" : ["I love you", "end"]
         },
         "Screw You" : {
             "text" : "GASP! Well you know what! Screw you too. Baka.",
             "sprite": "body2 39",
+            "points": { "romance": -1 },
             "next" : ["Screw You", "end"]
         },
         "end" : {
